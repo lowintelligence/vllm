@@ -195,6 +195,15 @@ def run_mii(
     return end - start
 
 
+def open_jsonl(path):
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    opt = []
+    for line in lines:
+        opt.append(json.loads(line))
+    return opt
+
+
 def main(args: argparse.Namespace):
     print(args)
     random.seed(args.seed)
@@ -202,11 +211,18 @@ def main(args: argparse.Namespace):
     # Sample the requests.
     tokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer, trust_remote_code=args.trust_remote_code)
+    samples = open_jsonl("/mnt/workspace/public/zongyan.cao/bookqa.jsonl")
     if args.dataset is None:
+        requests = []
+        for i in range(args.num_prompts):
+            prompt = samples[i%200]["messages"][1]["content"]
+            input_ids = tokenizer.encode(prompt, return_tensors="pt")
+            text = tokenizer.decode(input_ids[0][:(args.input_len - 1)], skip_special_tokens=True) 
+            requests.append((text, args.input_len, args.output_len))
         # Synthesize a prompt with the given input length.
-        prompt = "hi" * (args.input_len - 1)
-        requests = [(prompt, args.input_len, args.output_len)
-                    for _ in range(args.num_prompts)]
+        # prompt = "hi" * (args.input_len - 1)
+        # requests = [(prompt, args.input_len, args.output_len)
+        #             for _ in range(args.num_prompts)]
     else:
         requests = sample_requests(args.dataset, args.num_prompts, tokenizer,
                                    args.output_len)
